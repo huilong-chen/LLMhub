@@ -2,12 +2,12 @@
 set -x
 set -e
 echo $PYTHONPATH
-MODEL_PATH=path_to_model
+MODEL_PATH=/mnt/data/chenhuilong/model/Meta-llama-3-8B-Instruct
 CUDA_VISIBLE_DEVICES=0,1,2,3
 TASK_NAMES=gsm8k
 OUTPUT_DIR=/predict
 
-python eval/core/generate.py \
+python eval/core/generate_with_api.py \
   --model_path $MODEL_PATH \
   --devices $CUDA_VISIBLE_DEVICES \
   --task_names $TASK_NAMES \
