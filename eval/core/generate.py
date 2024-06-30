@@ -33,17 +33,13 @@ class Predictor:
         random.shuffle(samples_to_predict)
         request_list = []
         for i, sample in enumerate(samples_to_predict):
-            if not sample.is_multimodal:
-                if sample.use_template:
-                    prompt = self.tokenizer.apply_chat_template(sample.messages, tokenize=False,
-                                                                add_generation_prompt=True)
-                else:
-                    prompt = sample.messages
-                sample.prompts.append(prompt)
-                request_list.append({"prompt": prompt, **sample.task_config})
+            if sample.use_template:
+                prompt = self.tokenizer.apply_chat_template(sample.messages, tokenize=False,
+                                                            add_generation_prompt=True)
             else:
-                sample.prompts.append(sample.messages[-1]["content"][0]["text"])
-                request_list.append({"messages": sample.messages, **sample.task_config})
+                prompt = sample.messages
+            sample.prompts.append(prompt)
+            request_list.append({"prompt": prompt, **sample.task_config})
             # Print some samples for review
             if i < 10:
                 print(f"Sample {i} Prompt: {sample.prompts[-1]}")
