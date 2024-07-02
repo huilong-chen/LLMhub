@@ -73,7 +73,7 @@ async def create_item(request: Request):
         "time": time
     }
     # 构建日志信息
-    log = "[" + time + "] " + '", prompt:"' + prompt + '", response:"' + repr(response) + '"' + str(response)
+    log = "[" + time + "] " + ", prompt:" + prompt + ", response:" + str(response)
     print(log)  # 打印日志
     torch_gc()  # 执行GPU内存清理
     return answer  # 返回响应

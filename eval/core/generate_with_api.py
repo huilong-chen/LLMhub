@@ -31,19 +31,18 @@ class Predictor:
 
         print(f"Total samples: {len(samples_to_predict)}.")
         random.shuffle(samples_to_predict)
-        while samples_to_predict:
-            request_list = []
-            for i, sample in enumerate(samples_to_predict):
-                prompt = sample.messages[0]["content"]
-                sample.prompts.append(prompt)
-                request_list.append({"prompt": prompt, **sample.task_config})
-                # Print some samples for review
-                if i < 10:
-                    print(f"Sample {i} Prompt: {sample.prompts[-1]}")
-            results = await self.batch_request(request_list)
-            for sample, output in zip(samples_to_predict, results):
-                sample.model_outputs.append(output)
 
+        request_list = []
+        for i, sample in enumerate(samples_to_predict):
+            prompt = sample.messages[0]["content"]
+            sample.prompts.append(prompt)
+            request_list.append({"prompt": prompt, **sample.task_config})
+            # Print some samples for review
+            if i < 10:
+                print(f"Sample {i} Prompt: {sample.prompts[-1]}")
+        results = await self.batch_request(request_list)
+        for sample, output in zip(samples_to_predict, results):
+            sample.model_outputs.append(output)
         print("Generate finished.")
 
     def save_outputs(self, results: List[List[Sample]], output_dir: str):
@@ -60,12 +59,6 @@ class Predictor:
             results = await tqdm.gather(*tasks)
         return results
 
-    # def get_completion(prompt):
-    #     headers = {'Content-Type': 'application/json'}
-    #     data = {"prompt": prompt}
-    #     response = requests.post(url='http://127.0.0.1:6006', headers=headers, data=json.dumps(data))
-    #     return response.json()['response']
-
     async def single_request(self, session, data):
         data["model"] = ""
         url = "http://127.0.0.1:6006"
@@ -74,8 +67,7 @@ class Predictor:
             async with session.post(url, json=data, headers=headers) as response:
                 if response.status != 200:
                     raise ValueError(f"Server error: {response.status}")
-                print(response.json()['response'])
-                return await response.json()['response']
+                return await response.json()
         except Exception as e:
             print(f"Request error")
             return {"error": f"Request error: {repr(e)}"}

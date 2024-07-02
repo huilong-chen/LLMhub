@@ -86,8 +86,11 @@ class BaseTask(ABC):
         file_path = self.get_generate_path(output_dir)
         df = self.load_file_as_df(file_path).fillna("")
 
+        # extract answer for per row
         df = df.apply(lambda row: pd.Series(self.extract_answer(row.to_dict())), axis=1)
+        # calculate metrics for per row
         df_metrics = df.apply(lambda row: pd.Series(self.calculate_metrics_single(row.to_dict())), axis=1)
+        # calculate mean metrics
         avg_metrics = df_metrics.mean().to_dict()
         df_with_metrics = pd.concat([df, df_metrics], axis=1)
         file_path_with_metrics = os.path.join(output_dir, self.outputs_file_name)

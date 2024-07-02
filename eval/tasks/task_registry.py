@@ -10,10 +10,8 @@ class TaskRegistry:
     _task_registries = {}
 
     def __init__(self):
-        print("---- TaskRegistry ----")
         for f in glob.glob(join(dirname(__file__), "*.py")):
             module_name = basename(f)[:-3]
-            print(module_name)
             if not isfile(f) or module_name.startswith("_") or module_name.startswith("task"):
                 continue
             module = importlib.import_module(f"eval.tasks.{module_name}")

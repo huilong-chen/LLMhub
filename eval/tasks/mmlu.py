@@ -5,9 +5,9 @@ from typing import Dict, Any, List, Hashable, Tuple
 
 import pandas as pd
 
-from ..core.base_task import Sample
-from ..core.base_task import BaseTask
-from ..core.constant import create_system_message, create_user_message, create_assistant_message
+from eval.core.base_task import Sample
+from eval.core.base_task import BaseTask
+from eval.core.constant import create_system_message, create_user_message, create_assistant_message
 
 TASKS = [
     "abstract_algebra",

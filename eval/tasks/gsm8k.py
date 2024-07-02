@@ -87,6 +87,7 @@ class Gsm8k(BaseTask):
     def extract_answer(self, row: Dict[str, Any]) -> Dict[str, Any]:
         # 极端情况 7,333.33
         row["pred"] = str(row["pred"])
+        # 匹配可能带有逗号和小数点的数字格式
         number_pattern = r"\d+(,\d+)*(\.\d+)?"
         # answer is 后面的答案
         strict_pattern = rf"answer is\D*?({number_pattern})"
