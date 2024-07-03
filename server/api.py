@@ -1,12 +1,14 @@
 # 参考：https://github.com/datawhalechina/self-llm/blob/master/LLaMA3/
 
-from fastapi import FastAPI, Request
-from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
 import uvicorn
 import json
 import datetime
 import torch
 import os
+
+from fastapi import FastAPI, Request
+from transformers import AutoTokenizer, AutoModelForCausalLM
+from vllm import LLM, SamplingParams
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
@@ -52,16 +54,22 @@ async def create_item(request: Request):
 
     # 调用模型进行对话生成
     input_str = bulid_input(prompt=prompt, history=history)
-    input_ids = tokenizer.encode(input_str, add_special_tokens=False, return_tensors='pt').cuda()
-    print(input_ids)
-    print(tokenizer.encode('<|eot_id|>')[0])
 
-    generated_ids = model.generate(
-        input_ids=input_ids, max_new_tokens=512, do_sample=True,
-        top_p=0.9, temperature=0.5, repetition_penalty=1.1, eos_token_id=tokenizer.encode('<|eot_id|>')[0]
-    )
-    outputs = generated_ids.tolist()[0][len(input_ids[0]):]
-    response = tokenizer.decode(outputs)
+    # 基于 HuggingFace 的 generate
+    # input_ids = tokenizer.encode(input_str, add_special_tokens=False, return_tensors='pt').cuda()
+    # generated_ids = model.generate(
+    #     input_ids=input_ids, max_new_tokens=512, do_sample=True,
+    #     top_p=0.9, temperature=0.5, repetition_penalty=1.1, eos_token_id=tokenizer.encode('<|eot_id|>')[0]
+    # )
+    # outputs = generated_ids.tolist()[0][len(input_ids[0]):]
+    # response = tokenizer.decode(outputs)
+
+    # 基于 vllm 的 generate
+    input_ids = tokenizer.encode(input_str, add_special_tokens=False)
+    sampling_params = SamplingParams(temperature=0.8, top_p=0.95, repetition_penalty=1.1, max_tokens=512)
+    outputs = model.generate(prompts=None, sampling_params=sampling_params, prompt_token_ids=[input_ids])
+    response = outputs[0].outputs[0].text
+
     response = response.strip().replace('<|eot_id|>', "").replace('<|start_header_id|>assistant<|end_header_id|>\n\n', '').strip() # 解析 chat 模版
 
     now = datetime.datetime.now()  # 获取当前时间
@@ -83,8 +91,8 @@ if __name__ == '__main__':
     # 加载预训练的分词器和模型
     model_name_or_path = '/mnt/data/chenhuilong/model/Meta-llama-3-8B-Instruct'
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, use_fast=False)
-    model = AutoModelForCausalLM.from_pretrained(model_name_or_path, device_map="auto", torch_dtype=torch.bfloat16).cuda()
-
+    # model = AutoModelForCausalLM.from_pretrained(model_name_or_path, device_map="auto", torch_dtype=torch.bfloat16).cuda()
+    model = LLM(model=model_name_or_path)
     # 启动FastAPI应用
     # 用6006端口可以将autodl的端口映射到本地，从而在本地使用api
     uvicorn.run(app, host='0.0.0.0', port=6006, workers=1)  # 在指定端口和主机上启动应用
