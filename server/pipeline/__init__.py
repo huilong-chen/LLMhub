@@ -52,8 +52,10 @@ class PipelineParams:
     api_key: Optional[str] = None
     do_sample: InitVar[bool] = True
     add_default_stop: InitVar[bool] = False
+    white_list_token_ids: InitVar[Optional[Set[int]]] = None
+    enable_repeat_stopper: Optional[bool] = True
 
-    def __post_init__(self, do_sample: bool, add_default_stop: bool):
+    def __post_init__(self, do_sample: bool, add_default_stop: bool, white_list_token_ids: Optional[Set[int]]):
         if add_default_stop and not self.ignore_eos:
             self._add_default_stop()
         if not do_sample:
@@ -217,6 +219,10 @@ class Pipeline(ABC):
     async def do_log_stats(self):
         raise NotImplementedError
 
-    def create_pipeline_params(self, **kwargs):
+    def create_pipeline_params(self, white_list_token=None, **kwargs):
+        if white_list_token:
+            kwargs["white_list_token_ids"] = [
+                self.tokenizer.encode(token, add_special_tokens=False)[0] for token in white_list_token
+            ]
         params = PipelineParams(**kwargs)
         return params
