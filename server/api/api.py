@@ -10,7 +10,7 @@ from fastapi import FastAPI, Request
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from vllm import LLM, SamplingParams
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 # 设置设备参数
 DEVICE = "cuda"  # 使用CUDA
@@ -55,7 +55,7 @@ async def create_item(request: Request):
     # 调用模型进行对话生成
     input_str = bulid_input(prompt=prompt, history=history)
 
-    # 基于 HuggingFace 的 generate
+    # # 基于 HuggingFace 的 generate
     # input_ids = tokenizer.encode(input_str, add_special_tokens=False, return_tensors='pt').cuda()
     # generated_ids = model.generate(
     #     input_ids=input_ids, max_new_tokens=512, do_sample=True,
@@ -92,7 +92,7 @@ if __name__ == '__main__':
     model_name_or_path = '/mnt/data/chenhuilong/model/Meta-llama-3-8B-Instruct'
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, use_fast=False)
     # model = AutoModelForCausalLM.from_pretrained(model_name_or_path, device_map="auto", torch_dtype=torch.bfloat16).cuda()
-    model = LLM(model=model_name_or_path)
+    model = LLM(model=model_name_or_path, dtype='float16')
     # 启动FastAPI应用
     # 用6006端口可以将autodl的端口映射到本地，从而在本地使用api
     uvicorn.run(app, host='0.0.0.0', port=6006, workers=1)  # 在指定端口和主机上启动应用
