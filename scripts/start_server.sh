@@ -6,7 +6,7 @@ cd ${DIR}
 
 MODEL_NAME=Meta-llama-3-8B-Instruct
 MODEL_PATH=/mnt/data/chenhuilong/model/Meta-llama-3-8B-Instruct
-TENSOR_PARALLEL=4
+TENSOR_PARALLEL=1
 PORT=6006
 
 if [ -z "$MODEL_GROUP" ]; then
@@ -39,6 +39,8 @@ fi
 if [ -z "$CUDA_VISIBLE_DEVICES" ]; then
   CUDA_VISIBLE_DEVICES=$(seq -s ',' 0 $((TENSOR_PARALLEL - 1)))
   export CUDA_VISIBLE_DEVICES
+
+CUDA_VISIBLE_DEVICES=6
 
 fi
 export VLLM_WORKER_MULTIPROC_METHOD=fork

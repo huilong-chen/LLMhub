@@ -282,8 +282,8 @@ class OpenAIServingCompletion(OpenAIServing):
 
         result_generator: AsyncIterator[tuple[int, PipelineOutput]] = merge_async_iterators(*generators)
 
-        # Similar to the OpenAI API, when n != best_of, we do not stream the
-        # results. In addition, we do not stream the results when use beam search.
+        # 类似于OpenAI API，当 n 不等于 best_of 时，不使用 stream 传输结果。
+        # 此外，当使用束搜索（beam search）时，也不使用 stream 传输结果。
         stream = (
             request.stream and (request.best_of is None or request.n == request.best_of) and not request.use_beam_search
         )
@@ -320,8 +320,7 @@ class OpenAIServingCompletion(OpenAIServing):
         raw_request.state.first_scheduled_time = min([r.first_scheduled_time for r in final_res_batch])
         raw_request.state.first_token_time = min([r.first_token_time for r in final_res_batch])
 
-        # When user requests streaming but we don't stream, we still need to
-        # return a streaming response with a single event.
+        # 当用户请求流式传输，但如果我们不进行流式传输，我们仍然需要返回一个流式响应
         if request.stream:
             response_json = response.model_dump_json()
 
@@ -333,7 +332,3 @@ class OpenAIServingCompletion(OpenAIServing):
             return StreamingResponse(content=generator, media_type="text/event-stream")
 
         return JSONResponse(content=response.model_dump())
-
-    async def compute_tokens(self, request: CompletionRequest):
-        input_ids = self.tokenizer.encode(request.prompt)
-        return {"token_nums": len(input_ids)}
