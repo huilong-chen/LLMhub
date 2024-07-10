@@ -3,7 +3,7 @@ set -x
 set -e
 echo $PYTHONPATH
 MODEL_PATH=/mnt/data/chenhuilong/model/Meta-llama-3-8B-Instruct
-CUDA_VISIBLE_DEVICES=0,1,2,3
+CUDA_VISIBLE_DEVICES=4,5,6,7
 TASK_NAMES=gsm8k
 OUTPUT_DIR=/predict
 

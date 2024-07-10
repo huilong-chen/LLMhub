@@ -7,7 +7,7 @@ from typing import List, Dict, Any
 from tqdm.asyncio import tqdm
 import aiohttp
 
-from eval.tasks.task_registry import TASK_REGISTRY
+from eval.tasks import TASK_REGISTRY
 from eval.core.sample import Sample
 
 class Predictor:
@@ -34,7 +34,8 @@ class Predictor:
 
         request_list = []
         for i, sample in enumerate(samples_to_predict):
-            prompt = sample.messages[0]["content"]
+            # prompt = sample.messages
+            prompt = self.tokenizer.apply_chat_template(sample.messages, tokenize=False, add_generation_prompt=True)
             sample.prompts.append(prompt)
             request_list.append({"prompt": prompt, **sample.task_config})
             # Print some samples for review
@@ -61,10 +62,13 @@ class Predictor:
 
     async def single_request(self, session, data):
         data["model"] = ""
-        url = "http://127.0.0.1:6006"
-        headers = {'Content-Type': 'application/json'}
+        port = 6006
+        if "messages" not in data:
+            url = f"http://0.0.0.0:{port}/v1/completions"
+        else:
+            url = f"http://0.0.0.0:{port}/v1/chat/completions"
         try:
-            async with session.post(url, json=data, headers=headers) as response:
+            async with session.post(url, json=data) as response:
                 if response.status != 200:
                     raise ValueError(f"Server error: {response.status}")
                 return await response.json()
@@ -108,5 +112,4 @@ async def main():
     predictor.save_outputs(task_samples, output_dir)
 
 if __name__ == "__main__":
-    # 启动一个异步函数
     asyncio.run(main())

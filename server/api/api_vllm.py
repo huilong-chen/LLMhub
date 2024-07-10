@@ -9,7 +9,8 @@ from fastapi import FastAPI, Request
 from server.pipeline import Pipeline
 from server.api.utils import get_api_key
 from server.api.serving_chat import OpenAIServingChat
-from server.api.protocol import ChatCompletionRequest, ErrorResponse
+from server.api.serving_completion import OpenAIServingCompletion
+from server.api.protocol import ChatCompletionRequest, ErrorResponse, CompletionRequest
 from fastapi.routing import APIRoute
 from typing import Callable
 from http import HTTPStatus
@@ -61,10 +62,15 @@ app = FastAPI()
 app.router.route_class = LogRequestRoute
 
 openai_serving_chat: OpenAIServingChat = None
+openai_serving_completion: OpenAIServingCompletion = None
 
 @app.post("/v1/chat/completions")
 async def create_chat_completion(request: ChatCompletionRequest, raw_request: Request):
     return await openai_serving_chat.create_chat_completion(request, raw_request)
+
+@app.post("/v1/completions")
+async def create_completion(request: CompletionRequest, raw_request: Request):
+    return await openai_serving_completion.create_completion(request, raw_request)
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -83,6 +89,7 @@ if __name__ == "__main__":
         tensor_parallel_size=args.tensor_parallel,
     )
     openai_serving_chat = OpenAIServingChat(pipeline, args.model_name)
+    openai_serving_completion = OpenAIServingCompletion(pipeline, args.model_name)
 
     logging.info("Starting api server at port: " + str(args.port))
     uvicorn.run(app, host="0.0.0.0", port=args.port, workers=1, timeout_keep_alive=5)

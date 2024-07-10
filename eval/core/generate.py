@@ -6,7 +6,7 @@ import torch
 from transformers import AutoTokenizer, LlamaForCausalLM
 from typing import List
 
-from eval.tasks.task_registry import TASK_REGISTRY
+from eval.tasks import TASK_REGISTRY
 from eval.core.sample import Sample
 
 class Predictor:

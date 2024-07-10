@@ -1,7 +1,7 @@
 import argparse
 from typing import List
 from transformers import AutoTokenizer
-from eval.tasks.task_registry import TASK_REGISTRY
+from eval.tasks import TASK_REGISTRY
 
 class MetricsCalculator:
     def __init__(self, task_names: List[str], model_path=None):
