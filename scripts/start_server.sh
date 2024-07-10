@@ -21,13 +21,27 @@ if [ -z "$MODEL_PATH" ]; then
 
   export PYTHONUSERBASE=./pkg
   export PATH=$PATH:./pkg/bin
-  python -m cupyx.tools.install_library --library nccl --cuda 11.x
+
+  is_cuda_available=$(python -c "import torch; print(torch.cuda.is_available())")
+  if [ $is_cuda_available = "False" ]; then
+      echo "CUDA is not available. Unset LD_LIBRARY_PATH."
+      unset LD_LIBRARY_PATH
+  else
+      echo "CUDA is available."
+  fi
 fi
+
 if [[ $(pip list | grep -c vllm) -eq 0 ]]; then
   export LD_LIBRARY_PATH=/usr/local/cuda/compat/lib:$LD_LIBRARY_PATH
   export PATH=/opt/conda/envs/nlp-llm-eval/bin:$PATH
 fi
 
+if [ -z "$CUDA_VISIBLE_DEVICES" ]; then
+  CUDA_VISIBLE_DEVICES=$(seq -s ',' 0 $((TENSOR_PARALLEL - 1)))
+  export CUDA_VISIBLE_DEVICES
+
+fi
+export VLLM_WORKER_MULTIPROC_METHOD=fork
 python -m server.api.api_vllm --model_name "$MODEL_NAME" \
   --model_path "$MODEL_PATH" \
   --tensor_parallel "$TENSOR_PARALLEL" \

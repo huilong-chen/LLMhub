@@ -8,6 +8,7 @@ from tqdm import tqdm
 from vllm import AsyncEngineArgs, RequestOutput, SamplingParams
 from vllm.utils import Counter
 from server.vllm_utils.my_vllm_engine import MyAsyncLLMEngine
+from vllm.inputs import TokensPrompt
 
 
 def _get_sampling_params(pipeline_params: PipelineParams) -> SamplingParams:
@@ -151,11 +152,11 @@ class VLLMPipeline(Pipeline):
         sampling_params = _get_sampling_params(pipeline_params)
         if not request_id:
             request_id = random_uuid()
+        tokens_prompt = TokensPrompt(prompt_token_ids=input_ids)
         result_generator = self._async_engine.generate(
-            prompt=None,
+            inputs=tokens_prompt,
             sampling_params=sampling_params,
             request_id=request_id,
-            prompt_token_ids=input_ids,
         )
         async for vllm_output in result_generator:
             yield _get_pipeline_output(vllm_output)

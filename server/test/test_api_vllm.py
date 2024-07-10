@@ -1,7 +1,7 @@
 import openai
 
 def get_llm_result(conversation) -> str:
-    openai.api_base = "http://10.41.36.56:6006/v1"
+    openai.api_base = "http://0.0.0.0:6006/v1"
     openai.api_key = "test"
     chat_completion = openai.ChatCompletion.create(
         model="",
