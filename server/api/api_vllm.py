@@ -30,7 +30,7 @@ async def log_request(request: Request, response: Response) -> None:
         "process_time": process_time,
     }
 
-    if request_body:
+    if request_body and "messages" in request_body:
         # 由于 base64 编码的图片太大，所以不记录
         for conv in request_body["messages"]:
             if conv.get("role") == "user" and not isinstance(conv["content"], str):
