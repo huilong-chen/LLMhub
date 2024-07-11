@@ -164,5 +164,3 @@ class VLLMPipeline(Pipeline):
     async def abort_stream_request(self, request_id: str) -> None:
         return await self._async_engine.abort(request_id)
 
-    async def do_log_stats(self):
-        await self._async_engine.do_log_stats()

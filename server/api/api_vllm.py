@@ -5,9 +5,10 @@ import os
 import time
 import asyncio
 import json
+
 from fastapi import FastAPI, Request, BackgroundTasks
 from server.pipeline import Pipeline
-from server.api.utils import get_api_key
+from server.api.utils import get_api_key, _get_formatter, setup_logger
 from server.api.serving_chat import OpenAIServingChat
 from server.api.serving_completion import OpenAIServingCompletion
 from server.api.protocol import ChatCompletionRequest, ErrorResponse, CompletionRequest
@@ -48,7 +49,7 @@ async def log_request(request: Request, response: Response) -> None:
         request_info["time_in_queue"] = request.state.first_scheduled_time - request.state.start_time
     if request.state.first_token_time:
         request_info["time_to_first_token"] = request.state.first_token_time - request.state.start_time
-    logging.info(f"[{process_time * 1000:.2f}ms] {json.dumps(request_info, ensure_ascii=False)}")
+    logger.info(f"[{process_time * 1000:.2f}ms] {json.dumps(request_info, ensure_ascii=False)}")
 
 class LogRequestRoute(APIRoute):
     def get_route_handler(self) -> Callable:
@@ -95,6 +96,7 @@ class LogRequestRoute(APIRoute):
         return custom_route_handler
 
 app = FastAPI()
+
 app.router.route_class = LogRequestRoute
 
 openai_serving_chat: OpenAIServingChat = None
@@ -119,6 +121,7 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
+    logger = setup_logger("server/log", "app")
 
     pipeline = Pipeline.create_pipeline(
         args.model_path,
@@ -128,5 +131,9 @@ if __name__ == "__main__":
     openai_serving_chat = OpenAIServingChat(pipeline, args.model_name)
     openai_serving_completion = OpenAIServingCompletion(pipeline, args.model_name)
 
+    log_config = uvicorn.config.LOGGING_CONFIG
+    log_config["formatters"]["access"]["fmt"] = _get_formatter("RequestLogger")[0]
+    log_config["formatters"]["default"]["fmt"] = _get_formatter("FastAPILogger")[0]
+
     logging.info("Starting api server at port: " + str(args.port))
-    uvicorn.run(app, host="0.0.0.0", port=args.port, workers=1, timeout_keep_alive=5)
+    uvicorn.run(app, host="0.0.0.0", port=args.port, workers=1, log_config=log_config, timeout_keep_alive=5)
