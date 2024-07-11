@@ -4,8 +4,8 @@ import uvicorn
 import os
 import time
 import asyncio
-
-from fastapi import FastAPI, Request
+import json
+from fastapi import FastAPI, Request, BackgroundTasks
 from server.pipeline import Pipeline
 from server.api.utils import get_api_key
 from server.api.serving_chat import OpenAIServingChat
@@ -15,6 +15,40 @@ from fastapi.routing import APIRoute
 from typing import Callable
 from http import HTTPStatus
 from fastapi.responses import JSONResponse, Response
+
+async def log_request(request: Request, response: Response) -> None:
+    request_body = request.state.request_body
+    process_time = time.time() - request.state.start_time
+    code = request.state.streaming_code or response.status_code
+    request_info = {
+        "model_name": model_name,
+        "path": request.url.path,
+        "method": request.method,
+        "status": code,
+        "api_key": request.state.api_key,
+        "process_time": process_time,
+    }
+
+    if request_body:
+        # 由于 base64 编码的图片太大，所以不记录
+        for conv in request_body["messages"]:
+            if conv.get("role") == "user" and not isinstance(conv["content"], str):
+                for msg in conv["content"]:
+                    if msg["type"] == "image_base64":
+                        msg.pop("image_base64")
+
+        request_info["request_body"] = request_body
+    if request.state.generated_text:
+        request_info["generated_text"] = request.state.generated_text
+    if request.state.request_id:
+        request_info["request_id"] = request.state.request_id
+    if request.state.finish_reason:
+        request_info["finish_reason"] = request.state.finish_reason
+    if request.state.first_scheduled_time:
+        request_info["time_in_queue"] = request.state.first_scheduled_time - request.state.start_time
+    if request.state.first_token_time:
+        request_info["time_to_first_token"] = request.state.first_token_time - request.state.start_time
+    logging.info(f"[{process_time * 1000:.2f}ms] {json.dumps(request_info, ensure_ascii=False)}")
 
 class LogRequestRoute(APIRoute):
     def get_route_handler(self) -> Callable:
@@ -54,6 +88,8 @@ class LogRequestRoute(APIRoute):
                     ErrorResponse(message=str(exc), type="internal_server_error", code=code).model_dump(),
                     status_code=code,
                 )
+            response.background = BackgroundTasks()
+            response.background.add_task(log_request, request, response)
             return response
 
         return custom_route_handler
@@ -88,6 +124,7 @@ if __name__ == "__main__":
         args.model_path,
         tensor_parallel_size=args.tensor_parallel,
     )
+    model_name = args.model_name
     openai_serving_chat = OpenAIServingChat(pipeline, args.model_name)
     openai_serving_completion = OpenAIServingCompletion(pipeline, args.model_name)
 
