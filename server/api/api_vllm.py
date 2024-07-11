@@ -135,5 +135,5 @@ if __name__ == "__main__":
     log_config["formatters"]["access"]["fmt"] = _get_formatter("RequestLogger")[0]
     log_config["formatters"]["default"]["fmt"] = _get_formatter("FastAPILogger")[0]
 
-    logging.info("Starting api server at port: " + str(args.port))
+    logger.info("Starting api server at port: " + str(args.port))
     uvicorn.run(app, host="0.0.0.0", port=args.port, workers=1, log_config=log_config, timeout_keep_alive=5)
