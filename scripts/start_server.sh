@@ -35,6 +35,7 @@ if [[ $(pip list | grep -c vllm) -eq 0 ]]; then
   export LD_LIBRARY_PATH=/usr/local/cuda/compat/lib:$LD_LIBRARY_PATH
   export PATH=/opt/conda/envs/nlp-llm-eval/bin:$PATH
 fi
+export PATH=/opt/conda/envs/nlp-llm-eval/bin:$PATH
 
 if [ -z "$CUDA_VISIBLE_DEVICES" ]; then
   CUDA_VISIBLE_DEVICES=$(seq -s ',' 0 $((TENSOR_PARALLEL - 1)))

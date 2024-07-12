@@ -34,13 +34,19 @@ class Predictor:
 
         request_list = []
         for i, sample in enumerate(samples_to_predict):
-            # prompt = sample.messages
-            prompt = self.tokenizer.apply_chat_template(sample.messages, tokenize=False, add_generation_prompt=True)
-            sample.prompts.append(prompt)
-            request_list.append({"prompt": prompt, **sample.task_config})
+
+            # 使用 message 形式
+            request_list.append({"messages": sample.messages, **sample.task_config})
+
+            # 使用 prompt 形式
+            # sample.prompts.append(sample.messages)
+            # request_list.append({"prompt": sample.messages, **sample.task_config})
+
             # Print some samples for review
             if i < 10:
-                print(f"Sample {i} Prompt: {sample.prompts[-1]}")
+                prompt = sample.prompts[-1] if len(sample.prompts) > 0 else sample.messages
+                print(f"Sample {i} Prompt: {prompt}")
+
         results = await self.batch_request(request_list)
         for sample, output in zip(samples_to_predict, results):
             sample.model_outputs.append(output)
@@ -79,7 +85,7 @@ class Predictor:
     async def load_samples(self):
         task_samples = []
         for task in self.tasks:
-            task.task_config["max_tokens"] = 0
+            task.task_config["max_tokens"] = 2048
             task.task_config["logprobs"] = 0
             task.task_config["echo"] = True
             samples = task.load_samples()
