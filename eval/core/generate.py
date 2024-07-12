@@ -2,26 +2,22 @@ import argparse
 import asyncio
 import itertools
 import random
-import torch
-from transformers import AutoTokenizer, LlamaForCausalLM
-from typing import List
+from transformers import AutoTokenizer
+from typing import List, Dict, Any
+from tqdm.asyncio import tqdm
+import aiohttp
 
 from eval.tasks import TASK_REGISTRY
 from eval.core.sample import Sample
 
 class Predictor:
-    def __init__(self, model_path: str, task_names: List[str], devices: List[str]):
+    def __init__(self, model_path: str, task_names: List[str], devices: List[str], port: int):
         self.model_path = model_path
         self.task_names = task_names
         self.devices = devices
+        self.port = port
         self.tasks = TASK_REGISTRY.get_tasks(self.task_names)
-
-        self.model = LlamaForCausalLM.from_pretrained(self.model_path, trust_remote_code=True)
-        # 在使用较新的 transformers 时，由于使用了 tiktoken，use_fast 必须设置为 True
-        try:
-            self.tokenizer = AutoTokenizer.from_pretrained(self.model_path, use_fast=False, trust_remote_code=True)
-        except:
-            self.tokenizer = AutoTokenizer.from_pretrained(self.model_path, trust_remote_code=True)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_path, use_fast=False, trust_remote_code=True)
 
     async def predict(self, task_samples):
         samples_to_predict = list(itertools.chain(*task_samples))
@@ -31,49 +27,23 @@ class Predictor:
 
         print(f"Total samples: {len(samples_to_predict)}.")
         random.shuffle(samples_to_predict)
+
         request_list = []
         for i, sample in enumerate(samples_to_predict):
-            if sample.use_template:
-                prompt = self.tokenizer.apply_chat_template(sample.messages, tokenize=False,
-                                                            add_generation_prompt=True)
-            else:
-                prompt = sample.messages
-            sample.prompts.append(prompt)
-            request_list.append({"prompt": prompt, **sample.task_config})
+
+            # 使用 message 形式
+            request_list.append({"messages": sample.messages, **sample.task_config})
+
+            # 使用 prompt 形式
+            # sample.prompts.append(sample.messages)
+            # request_list.append({"prompt": sample.messages, **sample.task_config})
+
             # Print some samples for review
             if i < 10:
-                print(f"Sample {i} Prompt: {sample.prompts[-1]}")
-        # 调模型预测
-        results = []
-        for request in request_list:
-            print(f"Request: {request}")
-            messages = [
-                {'role': 'system', 'content': ''},
-                {'role': 'user', 'content': request["prompt"]}
-            ]
-            print(messages)
-            text = self.tokenizer.apply_chat_template(
-                messages,
-                tokenize=False,
-                add_generation_prompt=True
-            )
-            print(f"Text: {text}")
-            model_input = self.tokenizer([text], return_tensors='pt')
-            print(f"Model input: {model_input}")
-            attention_mask = torch.ones(model_input.input_ids.shape, dtype=torch.bfloat16)
-            generated_ids = self.model.generate(
-                model_input.input_ids,
-                max_new_tokens=512,
-                attention_mask=attention_mask,
-                pad_token_id=self.tokenizer.eos_token_id,
-            )
+                prompt = sample.prompts[-1] if len(sample.prompts) > 0 else sample.messages
+                print(f"Sample {i} Prompt: {prompt}")
 
-            generated_ids = [output_ids[len(input_ids):] for input_ids, output_ids in
-                             zip(model_input.input_ids, generated_ids)]
-
-            response = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-            print(f"Response: {response}")
-            results.append(response)
+        results = await self.batch_request(request_list)
         for sample, output in zip(samples_to_predict, results):
             sample.model_outputs.append(output)
         print("Generate finished.")
@@ -82,10 +52,36 @@ class Predictor:
         for task, result in zip(self.tasks, results):
             task.save_outputs(result, output_dir)
 
+    async def batch_request(self, request_list: List[Dict[str, Any]]):
+        connector = aiohttp.TCPConnector(limit=0, limit_per_host=200)
+        timeout = aiohttp.ClientTimeout(total=None)
+        async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
+            tasks = []
+            for data in request_list:
+                tasks.append(self.single_request(session, data))
+            results = await tqdm.gather(*tasks)
+        return results
+
+    async def single_request(self, session, data):
+        data["model"] = ""
+        port = self.port
+        if "messages" not in data:
+            url = f"http://0.0.0.0:{port}/v1/completions"
+        else:
+            url = f"http://0.0.0.0:{port}/v1/chat/completions"
+        try:
+            async with session.post(url, json=data) as response:
+                if response.status != 200:
+                    raise ValueError(f"Server error: {response.status}")
+                return await response.json()
+        except Exception as e:
+            print(f"Request error")
+            return {"error": f"Request error: {repr(e)}"}
+
     async def load_samples(self):
         task_samples = []
         for task in self.tasks:
-            task.task_config["max_tokens"] = 0
+            task.task_config["max_tokens"] = 2048
             task.task_config["logprobs"] = 0
             task.task_config["echo"] = True
             samples = task.load_samples()
@@ -100,6 +96,7 @@ def arg_parser():
     parser.add_argument("--task_names", type=str, required=True)
     parser.add_argument("--devices", type=str, required=True)
     parser.add_argument("--output_dir", type=str, required=True)
+    parser.add_argument("--server_port", type=int, required=True)
     return parser.parse_args()
 
 
@@ -109,7 +106,7 @@ async def main():
     task_names = args.task_names.split(",")
     devices = args.devices.split(",")
 
-    predictor = Predictor(args.model_path, task_names, devices)
+    predictor = Predictor(args.model_path, task_names, devices, args.server_port)
     load_task = asyncio.create_task(predictor.load_samples())
     task_samples = await load_task
 
