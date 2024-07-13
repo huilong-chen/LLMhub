@@ -31,15 +31,24 @@ class BaseTask(ABC):
             raw_data["messages"] = sample.messages
             raw_data["prompt"] = sample.prompts[0] if len(sample.prompts) == 1 else sample.prompts
 
+            prediction = sample.model_outputs
             try:
                 choice = sample.model_outputs[0]["choices"][0]
                 if "logprobs" in choice and choice["logprobs"] is not None:
                     raw_data["logits"] = choice["logprobs"]["token_logprobs"]
-                outputs = [choice["text"] for out in sample.model_outputs for choice in out["choices"]]
-                raw_data["pred"] = outputs[0] if len(outputs) == 1 else outputs
+                # completion API
+                elif "text" in choice:
+                    outputs = [choice["text"] for out in sample.model_outputs for choice in out["choices"]]
+                    prediction = outputs[0] if len(outputs) == 1 else outputs
+                # chat completion API
+                else:
+                    outputs = [choice["message"]["content"] for out in sample.model_outputs for choice in
+                               out["choices"]]
+                    prediction = outputs[0] if len(outputs) == 1 else outputs
             except:
                 # 返回结果不合法，可能因为输入过长或其他问题，直接保存原始输出
-                raw_data["pred"] = sample.model_outputs
+                logging.error(f"Parsing model outputs: {e} with model outputs: {sample.model_outputs}")
+            raw_data["pred"] = prediction
             all_contents.append(raw_data)
 
         df = pd.DataFrame(all_contents)
