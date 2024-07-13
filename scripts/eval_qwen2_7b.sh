@@ -4,7 +4,7 @@ set -e
 echo $PYTHONPATH
 MODEL_PATH=/mnt/data/chenhuilong/model/Qwen2-7B
 CUDA_VISIBLE_DEVICES=4,5,6,7
-TASK_NAMES=gsm8k
+TASK_NAMES=ceval
 OUTPUT_DIR=/predict
 SERVER_PORT=6006
 
