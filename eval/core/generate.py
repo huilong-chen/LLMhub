@@ -81,7 +81,6 @@ class Predictor:
     async def load_samples(self):
         task_samples = []
         for task in self.tasks:
-            task.task_config["max_tokens"] = 2048
             task.task_config["logprobs"] = 0
             task.task_config["echo"] = True
             samples = task.load_samples()

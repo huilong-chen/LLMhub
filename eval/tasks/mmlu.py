@@ -180,6 +180,12 @@ class Mmlu(BaseTask):
                 samples.append(sample)
         return samples
 
+    def extract_answer(self, row: Dict[str, Any]) -> Dict[str, Any]:
+        pred = row["pred"].replace("'", '"')
+        data = json.loads(pred)
+        row["pred"] = data[0]['choices'][0]['message']['content']
+        return row
+
     def calculate_metrics_single(self, row: Dict[str, Any]) -> Dict[str, float]:
         """
         Calculate metrics for a single row. Return a dict of metrics.
