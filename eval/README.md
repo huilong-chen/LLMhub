@@ -10,7 +10,7 @@
 
 1. 代码
 - [HumanEval](https://github.com/openai/human-eval)：一个用于评估代码生成模型的基准数据集。它包含一组编程问题和相应的单元测试，模型需要根据问题描述生成正确的 Python 代码。
-- [MBPP](https://huggingface.co/datasets/google-research-datasets/mbpp)：Mostly Basic Programming Problems，包含500个基本编程问题，每个问题都附有描述、输入输出示例和参考解决方案。
+- [MBPP](https://huggingface.co/datasets/google-research-datasets/mbpp)：Mostly Basic Python Problems，该基准测试包含大约1000个由大众提供的Python编程问题，旨在由入门级程序员解决，涵盖编s程基础、标准库功能等。每个问题由任务描述、代码解决方案和3个自动化测试用例组成。
 2. 综合推理
 - [BBH](https://github.com/suzgunmirac/BIG-Bench-Hard)：Big-Bench Hard，由多个任务组成的大规模综合推理基准数据集。任务涵盖语言理解、数学推理、常识推理等多个领域。
 3. 世界知识
@@ -40,7 +40,7 @@
 |   GSM8k    |          72.33           |            79.6            |     79.98      |       79.9       |
 |    MATH    |            -             |            30.0            |       -        |       44.2       |
 |   CMMLU    |            -             |             -              |       -        |       83.9       |
-|   CEval    |          52.08           |             -              |     79.35      |       83.9       |
+|   CEval    |          52.08           |             -              |     79.35      |       83.2       |
 
 
 TODO: 部分指标相差较大，待排查。

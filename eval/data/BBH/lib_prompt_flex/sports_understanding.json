@@ -1,0 +1,38 @@
+{
+    "system": "Determine whether an artificially constructed sentence relating to sports is plausible or not.",
+    "examples": [
+        {
+            "question": [
+                "Is the following sentence plausible? \"Bam Adebayo scored a reverse layup in the Western Conference Finals.\""
+            ],
+            "solution": [
+                "Bam Adebayo is an American basketball player. Scoring a reverse layup in the Western Conference Finals is part of the NBA Finals."
+            ],
+            "answer": [
+                "So the answer is yes."
+            ]
+        },
+        {
+            "question": [
+                "Is the following sentence plausible? \"Santi Cazorla scored a touchdown.\""
+            ],
+            "solution": [
+                "Santi Cazorla is a soccer player. Touchdown is part of American football and rugby."
+            ],
+            "answer": [
+                "So the answer is no."
+            ]
+        },
+        {
+            "question": [
+                "Is the following sentence plausible? \"DeMar DeRozan was called for the goal tend.\""
+            ],
+            "solution": [
+                "DeMar DeRozan is an American basketball player. Goal tending is part of basketball."
+            ],
+            "answer": [
+                "So the answer is yes."
+            ]
+        }
+    ]
+}
