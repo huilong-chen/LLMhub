@@ -1,10 +1,16 @@
 # 大模型评测
 
 ## 更新记录🔥
+- 2024.07.18 支持 **BBH**、**MBPP**和**MMLU-Pro** 评测
 - 2024.07.13 支持 **HumanEval** 代码评测
 - 2024.07.08 支持 **CEval** 中文评测
 - 2024.06.25 支持 **MMLU** 和 **GSM8K**
 - 2024.06.23 增加模型评测模块
+
+## 提交评测命令
+```shell
+bash scripts/eval_online.sh /mnt/data/chenhuilong/model/Qwen2-7B 0,1,2,3,4,5,6,7 mmlu,gsm8k,ceval,human_eval,bbh,mmlu_pro,mbpp /predict 6006
+```
 
 ## 常见大模型评测数据集分类
 
