@@ -1,0 +1,20 @@
+Here is a list containing a series of dialogues between a user and a programmer assistant.
+Following the previous dialogues, the user posed a latest problem.
+The assistant has now crafted the correct code based on the previous dialogues and the latest problem.
+Assuming you are this programmer assistant, please add some text before the code.
+The purpose of this text is to respond to the latest problem and to introduce the code that follows.
+This text may include: language used in the code, algorithm used in the code, step-by-step implementation overview, and other relevant content.
+You may use phrases like "The following code", "My code", "My solution", to refer to the @@Code.
+Your response should ONLY contain the text that you add before the code.
+Your only task is to write the text, never modify the code or remind me something.
+Never restate the previous dialogues and the problem.
+
+@@Previous Dialogues
+{previous dialogues}
+
+@@Recent Problem:
+{recent problem}
+
+Add the text there.
+@@Code:
+{code}

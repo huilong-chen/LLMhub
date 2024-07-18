@@ -1,0 +1,12 @@
+Rate the following code queries on a scale of 1 to 5 based on their complexity, where 1 is the easiest and 5 is the most difficult. Consider the complexity of the query.
+
+Query: [{query}]
+You are obliged to choose only from the following list.
+Scoring Criteria:
+1 Point - Very Basic: The query involves simple operations or common issues
+2 Points - Basic: The query involves fundamental programming concepts or commonly used functions
+3 Points - Intermediate: The query requires some programming experience, possibly involving multiple steps
+4 Points - Difficult: The query involves advanced programming skills, including complex logic, algorithms, or data structures
+5 Points - Very Difficult: The query requires extensive expertise, potentially involving innovative problem-solving approaches or unique algorithm design
+
+Please give the score first then explain why
