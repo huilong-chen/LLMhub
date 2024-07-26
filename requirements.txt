@@ -1,3 +1,10 @@
 vllm==0.5.0.post1
 human_eval
 scikit-learn
+pandas
+datasets
+transformers
+torch
+peft
+flash-attn
+gradio
