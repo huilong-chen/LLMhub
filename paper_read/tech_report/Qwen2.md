@@ -17,7 +17,7 @@
 # MoE相关
 
 1. 如何初始化？
-![img.png](../images/img.png)
+![img.png](../images/llama3/img.png)
 
 举例：
 

@@ -7,7 +7,7 @@
 
 128K tokens的上下文窗口
 
-![img.png](../images/img0.png)
+![img.png](../images/llama3/img0.png)
 
 开发高质量基座模型的三个关键要素：data，scale，managing complexity
 
@@ -17,12 +17,12 @@
 
 同时表示，也在开发模型的图片、视频和音频理解能力，进行中。
 
-![img_1.png](../images/img_1.png)
+![img_1.png](../images/llama3/img_1.png)
 
 # General Overview
 
 模型结构如下：
-![img_2.png](../images/img_2.png)
+![img_2.png](../images/llama3/img_2.png)
 
 文章的整体概述：
 
@@ -147,13 +147,96 @@ Our speech encoder is trained using a self-supervised approach that masks out pa
   - theta 增加到 500000
   - 支持更长文本
 
-![img_3.png](../images/img_3.png)
+![img_3.png](../images/llama3/img_3.png)
 
 ### Scaling Laws
 
+使用 Scaling Laws 来计算在可以拿出来的预训练计算预算下旗舰版模型的最佳尺寸。
+
+一个创新点：除了计算旗舰版模型的最佳尺寸外，还预测了模型在下游评测任务上的性能，两方面的原因：
+
+本节主要包含两点：
+
+- 计算最优：怎么得到一个“计算最优”的数据 vs 模型尺寸配比
+- 指标预测：怎么在训练开始前就可以预测模型在指标上的表现
+
+经典的 Scaling Law 公式：
+
+- 计算预算(FLOPs) = 6 * 数据(Tokens) * 模型尺寸(Model Parameters)
+
+怎么理解这个公式？
+
+- 计算预算可以理解为多少卡 * 多少天
+  - 比如，100 台 A800，训练一个月。一块 A800 目前能达到最好的吞吐大概是 210 TFLOPs/GPU，那么总预算就是：210 * 10^12 * 100 * 8 * 30 * 24 * 3600 = 4.35 * 10^23 FLOPs
+- 其他单位
+  - Tokens: 一般我们都说训练用了多少"T"的Token，1T Token = 1*10^12
+  - 参数数量: 一般都说这个模型多少"B"，1B 参数 = 1*10^9
+- 那我应该训练多大的模型？
+  - 根据公式，给定预算后，数据量和模型尺寸是成反比的。即，要么用大量数据训练一个小模型，要么用少量数据训练一个大模型。
+  - 比如说如果想要在这一个月内训练一个 7B 的模型，可以训练的 Token 数 =(4.35 * 10^23) / (7 * 10^9) / 6 = 10*10^12，大概就是 10T 的 Tokens。
+  - 这一个月如果训练一个 70B 的模型，同理，就是 1T Tokens。
+- 除了决定训练多大的模型，预测这个模型在下游任务的表现也很难，因为：
+  - 现有scaling law 都是预测loss，并不能直接给出任务的表现
+  - 现有scaling law 都是在小模型上做的，具有噪声，不可信
+- 为了解决这个问题，本文：
+  - 拟合了下游任务Loss和训练FLOPs的关系。
+  - 拟合了下游任务Loss和任务准确率的关系。 
+    - **使用scaling law 小模型和llama2的大模型的实验结果。**
+- 通过这样，可以在给定计算资源后，预测模型在下游任务上的表现。
 
 
+**Scaling law experiments.**
 
+- 第一步，需要找到给定资源下，最优模型的设置。
+
+  - 实验采用 6x10^18~10^22FLOPs 的预算范围
+  - 每个预算下，训练40M~16B的模型
+  - 超参数设置
+    - 2000warmup
+    - 最高学习率 2e-4~4e-4
+    - 余弦退火，最小学习率为0.1x最高
+    - weight decay（l2正则系数）=0.1*学习率
+    - 固定batch size 250K～4M
+  - 为了绘制下图中的 IsoFLOPs curves，需要做很多实验, 下图的每个点都代表一个实验
+    - 可以理解成一个三元组（模型参数，数据量，Loss）
+    - 用二次函数拟合相同FLOPS的实验
+    - 抛物线的最小值为计算最优模型
+    - 预算越高，抛物线越平。所以对于旗舰模型，在token和模型大小的选择上是更鲁棒的。
+
+![img.png](../images/llama3_scaling_law/img.png)
+
+- 有了计算最优模型，下一步就是要预测给定预算下，用多少的Token训练大的模型了。
+
+  - 输入C：计算预算
+  - 输出Token数量
+  - A和alpha是需要拟合的参数
+
+  
+![img.png](../images/llama3_scaling_law/img3.png)
+
+使用上图的最优模型（粉色点）来拟合这个公式：
+
+![img_1.png](../images/llama3_scaling_law/img_1.png)
+
+然后外推，3.8e25 FLOPS，得到需要使用16.55T tokens 训练 402B 的模型，是最优选择。
+
+验算：
+
+Tokens = 0.299 * (3.8 * 10^25)^0.537 = 16,293,522,313,716 = 16.29T
+Model size = 3.8 * 10^25 / 16,293,522,313,716 / 6 = 388,702,529,225 = 388B
+
+
+**Predicting performance on downstream tasks**
+
+预测模型在 task 上的表现
+
+第一步，使用线性拟合正确答案的NLL loss和FLOPs的关系（这里使用前面实验的scaling law 小模型）
+
+第二步，使用sigmoid拟合Loss和准确率的关系（这里使用小模型+llama2）
+
+在ARC Challenge（一个高难度选择题评测）上，4个数量级的外推非常准确，只轻微低估了旗舰模型的表现。
+
+![img_2.png](../images/llama3_scaling_law/img_2.png)
 
 ## Infrastructure, Scaling, and Efficiency
 
@@ -176,7 +259,7 @@ Llama3 405B 模型预训练背后的基础设施和几个可以改进训练效�
 
 ### Parallelism for Model Sacling
 
-![img_4.png](../images/img_4.png)
+![img_4.png](../images/llama3/img_4.png)
 
 - 使用了4D并行
   - 4D分别是 Tensor P、Context P、Pipeline P、Data P
@@ -213,7 +296,7 @@ Llama3 405B 模型预训练背后的基础设施和几个可以改进训练效�
     - 进行了详细的显存profiling，手动释放未来不会使用的显存，包括每个pp stage的输入和输出tensor
     - 经过这些优化，他们能够不使用activation checkpointing就能训练8k的长度
 
-![img_5.png](../images/img_5.png)
+![img_5.png](../images/llama3/img_5.png)
 
 
 ## Training Recipe
@@ -276,7 +359,7 @@ Llama3 405B 模型预训练背后的基础设施和几个可以改进训练效�
 
 其次，通过 SFT 和 DPO 微调预训练的 checkpoint。如图。主要讨论了 llama3 405B的后训练流程。
 
-![img_6.png](../images/img_6.png)
+![img_6.png](../images/llama3/img_6.png)
 
 
 ### Chat Dialog Format
@@ -353,7 +436,7 @@ Llama 3 相较于其前身，引入了一些新功能：
   - 只用最新一轮的数据进行DPO
   - 只筛选偏好强度属于最高两级的数据进行训练
 
-![img_7.png](../images/img_7.png)
+![img_7.png](../images/llama3/img_7.png)
 
 
 ### SFT Data
@@ -369,7 +452,7 @@ Llama 3 相较于其前身，引入了一些新功能：
   - 平均对话轮数：4.7，每条样本平均长度846.1tokens，context平均长度535.7 tokens， 最终回复平均长度：310.4 tokens
   - 每轮训练都会根据模型表现调整训练数据的比例，高质量数据可能多重复几次，低质量数据会被下采样。
 
-![img_8.png](../images/img_8.png)
+![img_8.png](../images/llama3/img_8.png)
 
 
 ### Data Processing and Quality Control
@@ -415,7 +498,7 @@ Llama 3 相较于其前身，引入了一些新功能：
           - 迭代训练：用上一轮improved的模型生成higher quality的数据
     - 编程语言翻译：解决less common编程语言训练数据少的问题，在 MultiPL-E 上有显著提升 
       - 举例：Python -> PHP （Fig 8）
-      - ![img_9.png](../images/img_9.png)
+      - ![img_9.png](../images/llama3/img_9.png)
     - 回译/反向翻译（**1.2M**），有些能力通过执行反馈不好评测，比如代码解释，
       - 先产生正向数据，比如给代码加注释，或者让模型解释代码 
       - 让模型回译成代码，比如从代码的解释里生成代码 
@@ -425,7 +508,7 @@ Llama 3 相较于其前身，引入了一些新功能：
     - （readability, documentation, thoroughness, and specificity）
     - 目的是提升质量(code quality) 
     - 例子 （Fig 9）增加注释，修改变量名，更好理解
-    - ![img_10.png](../images/img_10.png)
+    - ![img_10.png](../images/llama3/img_10.png)
 
   - 使用执行和模型作为裁判信号过滤训练数据
     1. 过滤训练数据：使用执行和模型作为裁判的信号来过滤训练数据。
@@ -459,7 +542,7 @@ Llama 3 相较于其前身，引入了一些新功能：
 
 ### Long Context
 
-![img_11.png](../images/img_11.png)
+![img_11.png](../images/llama3/img_11.png)
 
 发现（上图）：在PT阶段已经做过长文本训练，如果在SFT阶段只用短文本训练，长文本能力损伤较大
 
@@ -494,7 +577,7 @@ Llama 3 相较于其前身，引入了一些新功能：
 - 单步工具使用：few shot方式构造问题和答案，最后调用成功的数据加进数据集，数据构成「system prompt, user prompt, tool call, tool output, final answer」
 - 多步工具使用：和单步的类似，区别是需要产生能调用多个工具的数据「system prompt, user prompt,(tool call, tool output)*n, final answer」
   - 多步工具使用的例子
-  - ![img_12.png](../images/img_12.png)
+  - ![img_12.png](../images/llama3/img_12.png)
 - 文件上传：上传文件进行特定任务
 
 自定义工具使用能力的构造：用大量「functions definitions, user query, corresponding call」数据训练模型（没讲怎么来的）
@@ -551,16 +634,16 @@ Steerability is the ability to direct the model’s actions and outcomes to meet
 
 包含了以下测试集
 
-![img_13.png](../images/img_13.png)
+![img_13.png](../images/llama3/img_13.png)
 
 对于其他同尺寸的模型，也自己进行了重新测试，为了公平，选择了自己的测试结果和报告结果中最好的那一个。
 
 因为单次测试具有偶然性，特别是一些测试集，偶然性较大，所以他们进行了多次测试，在95%置信区间内计算最终的测试结果。具体的计算方式为：
-![img_14.png](../images/img_14.png)
+![img_14.png](../images/llama3/img_14.png)
 
 S 是在评测集上的 Score，N 是评测集的样本数量
 
-![img_15.png](../images/img_15.png)
+![img_15.png](../images/llama3/img_15.png)
 
 llama3 8b和llama3 70b与其他同水平模型的对比。llama3 8b很多方面都是第一。llama3 70b相比于llama2 70b，只有常识部分的没什么提升，大概是因为这部分的知识已经饱和。llama3 70b也优于mixtral 8*22b。
 
@@ -568,24 +651,24 @@ llama3 8b和llama3 70b与其他同水平模型的对比。llama3 8b很多方面�
 
 阅读理解和代码：
 
-![img_16.png](../images/img_16.png)
+![img_16.png](../images/llama3/img_16.png)
 
 
 常识理解：
 
-![img_17.png](../images/img_17.png)
+![img_17.png](../images/llama3/img_17.png)
 
 数学推理：
 
-![img_18.png](../images/img_18.png)
+![img_18.png](../images/llama3/img_18.png)
 
 通用能力：
 
-![img_19.png](../images/img_19.png)
+![img_19.png](../images/llama3/img_19.png)
 
 长文本：
 
-![img_20.png](../images/img_20.png)
+![img_20.png](../images/llama3/img_20.png)
 
 从这些来看，llama3 405b的代码能力相对有点差。别的几乎都是第一梯队，尤其在通用能力方面，llama3全面好于其他对比模型。
 
@@ -599,7 +682,7 @@ few-shot影响：分别测试以下情况：（1）所有shot的答案都是相�
 
 标签变化的影响：选取了不同的标签名字：$ & # @、œ § з ü、A. B. C. D、A) B) C) D)、1. 2. 3. 4.。
 
-![img_21.png](../images/img_21.png)
+![img_21.png](../images/llama3/img_21.png)
 
 可以看出，llam3的鲁棒性还是比较好的。而且模型越大，对标签的鲁棒性越强。
 
@@ -618,7 +701,7 @@ few-shot影响：分别测试以下情况：（1）所有shot的答案都是相�
 
 对抗测试是检测模型是否对某些测试集有过拟合。对于QA，选取了Adversarial SQuAD和Dynabench SQuAD进行测试。对于数学推理，使用了GSM-Plus。对于意译检测，使用的是PAWS。非对抗测试，QA使用SQuAD，数学推理使用GSM8k，意译检测使用QQP。每个数据点都表示一个对抗测试和非对抗测试的配对。
 
-![img_22.png](../images/img_22.png)
+![img_22.png](../images/llama3/img_22.png)
 
 左图是预训练模型，右图是instruct模型。意译检测方面，模型是没有什么变化的。在数学推理方面，过拟合了一点。QA方面过拟合多一些。
 
@@ -629,7 +712,7 @@ few-shot影响：分别测试以下情况：（1）所有shot的答案都是相�
 
 使用8-gram overlap来进行污染检测。判断测试数据是否在训练数据里面出现过。
 
-![img_23.png](../images/img_23.png)
+![img_23.png](../images/llama3/img_23.png)
 
 表中提供了污染分数和性能增益的结果，剔除了一些无意义的结果。
 
@@ -645,13 +728,13 @@ few-shot影响：分别测试以下情况：（1）所有shot的答案都是相�
 ### General Knowledge and Instruction-Following Benchmarks
 
 测试集如下：
-![img_24.png](../images/img_24.png)
+![img_24.png](../images/llama3/img_24.png)
 
 具体的评测方式与PT的类似。
 
 instruct模型结果：
 
-![img_25.png](../images/img_25.png)
+![img_25.png](../images/llama3/img_25.png)
 
 ### Proficiency Exams
 
@@ -663,7 +746,7 @@ instruct模型结果：
 * AP： 每个科目一次官方模拟考试；
 * GMAT 官方 GMAT 在线考试。
 
-![img_26.png](../images/img_26.png)
+![img_26.png](../images/llama3/img_26.png)
 
 总结：llama3.1 70b比GPT 3.5 turbo厉害。llama3.1 405b跟GPT-4o、Claude 3.5差不多。
 
@@ -672,17 +755,17 @@ instruct模型结果：
 
 只公布了 Pass@1
 
-![img_28.png](../images/img_28.png)
+![img_28.png](../images/llama3/img_28.png)
 
 
 使用翻译后的代码测试多编程语言
 
-![img_29.png](../images/img_29.png)
+![img_29.png](../images/llama3/img_29.png)
 
 
 ### Multilingual Benchmarks
 
-![img_30.png](../images/img_30.png)
+![img_30.png](../images/llama3/img_30.png)
 
 在 8B 和 70B 级别上，llama3.1厉害，符合预期，因为别的模型可能没有在小语种上去专门训练。
 
@@ -701,11 +784,11 @@ Llama 3 8B 模型在 GSM8K、MATH 和 GPQA 上的表现优于其他类似大小�
 - ZeroSCROLLS是一个针对长文本自然语言理解的零点基准。我们报告的是验证集的数据，因为地面实况答案并不公开。我们的 Llama 3 405B 和 70B 模型在这一基准中的各种任务上要么与其他模型不相上下，要么超过了其他模型。
 - InfiniteBench 要求模型理解上下文窗口中的长依赖关系。我们在 En.QA（小说问答）和 En.MC（小说多选问答）上对 Llama 3 进行了评估，我们的 405B 模型在这两项任务上的表现优于其他所有模型。Llama 3 在 En.QA 和 En.MC 上的表现尤为突出。
 
-![img_31.png](../images/img_31.png)
+![img_31.png](../images/llama3/img_31.png)
 
 ### Tool Use Performance
 
-![img_32.png](../images/img_32.png)
+![img_32.png](../images/llama3/img_32.png)
 
 1. 在Nexus基准测试中，Llama 3的各个变体相比其他同类模型表现最佳。
 2. 在API-Bank基准测试中，Llama 3的8B和70B模型在它们所属的类别中显著超越其他模型。
@@ -717,7 +800,7 @@ Llama 3 8B 模型在 GSM8K、MATH 和 GPQA 上的表现优于其他类似大小�
 
 另外，人工评估了代码执行和工具调用方面的能力，共测试了2000条case。
 
-![img_33.png](../images/img_33.png)
+![img_33.png](../images/llama3/img_33.png)
 
 在纯文本代码执行任务和绘图生成方面，Llama 3 405B 明显优于 GPT-4o。不过，在文件上传使用案例中，它就落后了。
 
@@ -727,7 +810,7 @@ prompt收集：收集了7,000 条提示，涵盖六种单项能力（英语、�
 
 人工评估：人工进行AB盲评，使用7分制度：-3、-2、-1、0、1、2、3，只有2、3才会被统计为有效的win。将模型进行配对比较，统计胜率。
 
-![img_34.png](../images/img_34.png)
+![img_34.png](../images/llama3/img_34.png)
 
 结果：我们使用人工评估程序将 Llama 3 405B 与 GPT-4（0125 API 版本）、GPT-4o（API 版本）和 Claude 3.5 Sonnet（API 版本）进行比较。我们发现，Llama 3 405B 的性能与 0125 API 版本的 GPT-4 大致相当，而与 GPT-4o 和 Claude 3.5 Sonnet 相比，其性能参差不齐（有赢有输）。在几乎所有功能上，Llama 3 和 GPT-4 的胜率都在误差范围内。在多轮推理和编码任务上，Llama 3 405B 的表现优于 GPT-4，但在多语言（印地语、西班牙语和葡萄牙语）提示上，Llama 3 405B 的表现低于 GPT-4。Llama 3 在英语提示方面的表现与 GPT-4o 相当，在多语种提示方面与 Claude 3.5 Sonnet 相当，在单匝和多匝英语提示方面则优于 Claude 3.5 Sonnet。不过，它在编码和推理等能力方面落后于 Claude 3.5 Sonnet。从质量上讲，我们发现模型在人类评估中的表现在很大程度上受到细微因素的影响，如模型音调、响应结构和词性，而这些因素正是我们在后期训练过程中要优化的。总体而言，我们的人类评估结果与标准基准评估结果一致： Llama 3 405B 与业界领先的模型相比具有很强的竞争力，是性能最佳的公开可用模型。
 基准评估： Llama 3 405B 与业界领先的模型相比具有很强的竞争力，是性能最佳的公开可用模型。
