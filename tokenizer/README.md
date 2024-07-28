@@ -124,6 +124,8 @@ print(segmented_sentence)
 
 如何构造出 subwords 词典呢？常见的四种方式：
 
+参考链接：https://zhuanlan.zhihu.com/p/631463712
+
   - BPE
   - SentencePiece
   - UniLM
@@ -131,8 +133,9 @@ print(segmented_sentence)
 
 ### BPE
 
-BPE（Byte Pair Encoding）是一种用于文本数据压缩和处理的技术，尤其常用于自然语言处理（NLP）中的词汇表构建和子词级别的分词。
+从GPT-2开始一直到GPT-4，OpenAI一直采用BPE分词法。
 
+BPE（Byte Pair Encoding）是一种用于文本数据压缩和处理的技术，尤其常用于自然语言处理（NLP）中的词汇表构建和子词级别的分词。
 
 BPE 的基本思想是通过迭代地合并频率最高的相邻符号对，逐步构建出更长的子词单元。具体步骤如下：
 
@@ -159,14 +162,68 @@ aa a b d aa a b a c
 
 重复上面的过程
 
+如何将句子切分成子词？
+
+```markdown
+# 给定单词序列
+["the</w>", "highest</w>", "mountain</w>"]
+
+# 从一个很大的corpus中排好序的subword表如下
+# 长度 6         5           4        4         4       4          2
+["errrr</w>", "tain</w>", "moun", "est</w>", "high", "the</w>", "a</w>"]
+
+# 迭代结果
+"the</w>" -> ["the</w>"]
+"highest</w>" -> ["high", "est</w>"]
+"mountain</w>" -> ["moun", "tain</w>"]
+```
+
+注意，在上述算法执行后，如果句子中仍然有子字符串没被替换但所有subword都已迭代完毕，则将剩余的子词替换为特殊token，如 `<unk>` 。
+
+从这里大家也可以发现了，原则上`<unk>` 这个token出现的越少越好，所以我们也往往用`<unk>` 的数量来评价一个tokenizer的好坏程度，这个token出现的越少，tokenizer的效果往往越好。
+
 
 ### WordPiece
+
+Bert 一族基本上使用的是这种方法。
 
 与BPE相同点： 每次从统计语料中选取出两个新的子词进行合并。
 
 它与BPE最大区别在于选择两个子词进行合并的原则：BPE按频率，WordPiece按能够使得LM概率最大的相邻子词加入词表。
 
 ![img_2.png](images/img_2.png)
+
+
+有关BERT的tokenizer还有一个重点：BERT在使用Word-Piece时加入了一些特殊的token，例如[CLS]和[SEP]。我们可以自己试一下：
+
+```python
+from transformers import BertTokenizer
+inputs='Coolest pretrained Asmita!'
+tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+input_ids = tokenizer.encode(inputs, return_tensors='pt')
+print(input_ids)
+for input_id in input_ids [0]:
+    print(tokenizer.decode(input_id))
+
+```
+输出：
+
+```markdown
+tensor([[  101,  4658,  4355,  3653, 23654,  2098,  2004, 22930,  2050,   999,
+           102]])
+[ C L S ]
+c o o l
+# # e s t
+p r e
+# # t r a i n
+# # e d
+a s
+# # m i t
+# # a
+!
+[ S E P ]
+```
+发现BERT在句首加上了[CLS]，句尾加上了[SEP]，而且对coolest做了子词分解，对词根est加上了##来表示这是一个后缀。对于没有出现在词汇表里的单词例如asmita（是个印度人名），BERT所用的Word-Piece tokenizer会将它分解为Word-Piece算法形成的子词词汇表中存在的as，mit和a，组成一个子词。
 
 
 ### UniLM
@@ -188,12 +245,24 @@ ULM算法考虑了句子的不同分词可能，因而能够输出带概率的�
 Tokenize("Hello World !") == Tokenize("Hello World!")
 ```
 
+SentencePiece主要是为了多语言模型设计的，它做了两个重要的转化：
+
+- 以unicode方式编码字符，将所有的输入（英文、中文等不同语言）都转化为unicode字符，解决了多语言编码方式不同的问题。
+- 将空格编码为‘_’， 如'New York' 会转化为['_', 'New', '_York']，这也是为了能够处理多语言问题，比如英文解码时有空格，而中文没有， 这种语言区别。
+
+想要加上某些本来tokenizer中不存在的token，可以使用add_tokens()方法。
+这之后，还需要告诉模型我已经更新了词汇表，使用`model.resize_token_embeddings(len(tokenizer))`
+
 而SentencePiece的解决方法是：
 
 1. SentencePiece首先将所有输入转换为unicode字符。这意味着它不必担心不同的语言、字符或符号，可以以相同的方式处理所有输入；
 2. 空白也被当作普通符号来处理。Sentencepiece显式地将空白作为基本标记来处理，用一个元符号 “▁”（ U+2581 ）转义空白，这样就可以实现简单地decoding；
 3. Sentencepiece可以直接从raw text进行训练；
 4. 支持BPE和UniLM训练方法。
+
+![img.png](LM-tokenizer.png)
+
+![img.png](LLM-tokenizer.png)
 
 ## 怎么训练一个更纯粹、更高压缩率的 Tokenizer ？
 
