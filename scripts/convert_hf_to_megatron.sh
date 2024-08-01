@@ -13,7 +13,7 @@ PP=4
 LOAD_PATH=model/Meta-Llama-3-8B
 SAVE_PATH=model/Meta-Llama-3-8B-Megatron
 
-python megatron_utils/convert_llama3_to_megatron.py \
+python megatron_utils/convert/convert_llama3_to_megatron.py \
     --load_path $LOAD_PATH \
     --save_path $SAVE_PATH \
     --tokenizer_path $LOAD_PATH \
