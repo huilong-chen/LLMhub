@@ -6,7 +6,7 @@ from typing import Dict, Any, List, Hashable
 
 from eval.core.sample import Sample
 from eval.core.base_task import BaseTask
-from eval.core.utils import create_system_message, create_user_message, create_assistant_message
+from eval.core.constant import create_system_message, create_user_message, create_assistant_message
 from eval.core.constant import COT_CODE
 
 subjects = ["math", "health", "physics", "business", "biology", "chemistry", "computer science", "economics", "engineering", "philosophy", "other", "history", "law", "psychology"]

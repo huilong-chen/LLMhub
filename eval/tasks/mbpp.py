@@ -6,7 +6,7 @@ import os
 
 from eval.core.sample import Sample
 from eval.core.base_task import BaseTask
-from eval.core.utils import create_system_message, create_user_message, create_assistant_message
+from eval.core.constant import create_system_message, create_user_message, create_assistant_message
 
 
 class Mbpp(BaseTask):

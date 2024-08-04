@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 
 from eval.core.sample import Sample
 from eval.core.base_task import BaseTask
-from eval.core.utils import create_assistant_message, create_system_message, create_user_message
+from eval.core.constant import create_assistant_message, create_system_message, create_user_message
 from eval.core.constant import COT_CODE
 
 
