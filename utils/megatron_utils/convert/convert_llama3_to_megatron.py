@@ -68,8 +68,9 @@ def convert_tokens_to_string(tokens):
     text = bytearray([byte_decoder[c] for c in text]).decode("utf-8", errors="replace")
     return text
 
-
+# Copy from https://github.com/huggingface/transformers/blob/main/src/transformers/models/megatron_gpt2/checkpoint_reshaping_and_interoperability.py
 def add_checkpointing_args(parser):
+    parser.add_argument("--megatron-path", type=str, default=None, help="Base directory of Megatron repository")
     parser.add_argument(
         "--convert_checkpoint_from_megatron_to_transformers",
         action="store_true",
@@ -184,16 +185,42 @@ def add_transformers_checkpoint_args(parser):
 
     return parser
 
+#  1 LlamaForCausalLM(
+#  2  (model): LlamaModel(
+#  3     (embed_tokens): Embedding(128256, 4096)
+#  4     (layers): ModuleList(
+#  5       (0-31): 32 x LlamaDecoderLayer(
+#  6         (self_attn): LlamaSdpaAttention(
+#  7           (q_proj): Linear(in_features=4096, out_features=4096, bias=False)
+#  8           (k_proj): Linear(in_features=4096, out_features=1024, bias=False)
+#  9           (v_proj): Linear(in_features=4096, out_features=1024, bias=False)
+# 10           (o_proj): Linear(in_features=4096, out_features=4096, bias=False)
+# 11           (rotary_emb): LlamaRotaryEmbedding()
+# 12         )
+# 13         (mlp): LlamaMLP(
+# 14           (gate_proj): Linear(in_features=4096, out_features=14336, bias=False)
+# 15           (up_proj): Linear(in_features=4096, out_features=14336, bias=False)
+# 16           (down_proj): Linear(in_features=14336, out_features=4096, bias=False)
+# 17           (act_fn): SiLU()
+# 18         )
+# 19         (input_layernorm): LlamaRMSNorm()
+# 20         (post_attention_layernorm): LlamaRMSNorm()
+# 21       )
+# 22     )
+# 23     (norm): LlamaRMSNorm()
+# 24   )
+# 25   (lm_head): Linear(in_features=4096, out_features=128256, bias=False)
+# 26 )
 
 # The simple map of names for "automated" rules.
 megatron_to_transformers = {
-    "self_attention.query_key_value": ".self_attn.qkv_proj.",
-    "self_attention.dense": ".self_attn.o_proj.",
-    "mlp.dense_h_to_4h_1": ".mlp.gate_proj.",
-    "mlp.dense_h_to_4h_2": ".mlp.up_proj.",
-    "mlp.dense_4h_to_h": ".mlp.down_proj.",
-    "input_layernorm": ".input_layernorm.",
-    "post_attention_layernorm": ".post_attention_layernorm.",
+    "self_attention.query_key_value": ".self_attn.qkv_proj.",  # 7, 8, 9
+    "self_attention.dense": ".self_attn.o_proj.",  # 10
+    "mlp.dense_h_to_4h_1": ".mlp.gate_proj.",  # 14
+    "mlp.dense_h_to_4h_2": ".mlp.up_proj.",  # 15
+    "mlp.dense_4h_to_h": ".mlp.down_proj.",  # 16
+    "input_layernorm": ".input_layernorm.",  # 19
+    "post_attention_layernorm": ".post_attention_layernorm.",  # 20
 }
 
 transformers_to_megatron = {v[1:-1]: k for k, v in megatron_to_transformers.items()}
@@ -359,7 +386,7 @@ def convert_checkpoint_from_megatron_to_transformers(args):
             " arguments to use this utility."
         )
 
-    # 这里使用fast，会保存slow+fast
+    # Create Transformers Llama config from Megatron-LM arguments
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_path, use_fast=True, trust_remote_code=True)
     tokenizer_config = get_tokenizer_config(args.tokenizer_path)
 
@@ -513,23 +540,14 @@ def convert_checkpoint_from_megatron_to_transformers(args):
     output_state_dict["model.norm.weight"] = params["final_layernorm.weight"].to(dtype)
 
     print("Converting LM head")
-    try:
-        lm_head = torch.cat(
-            [
-                get_element_from_dict_by_path(tp_state_dicts[tp_rank], "model.language_model.output_layer.weight")
-                for tp_rank in range(tp_size)
-            ],
-            dim=0,
-        )
-    except:
-        # 兼容正在训练的 70B 模型，之后可以删除。hf 转 megatron 不受影响
-        lm_head = torch.cat(
-            [
-                get_element_from_dict_by_path(tp_state_dicts[tp_rank], "model.word_embeddings_for_head.weight")
-                for tp_rank in range(tp_size)
-            ],
-            dim=0,
-        )
+    lm_head = torch.cat(
+        [
+            get_element_from_dict_by_path(tp_state_dicts[tp_rank], "model.language_model.output_layer.weight")
+            for tp_rank in range(tp_size)
+        ],
+        dim=0,
+    )
+
     # cut the head to the size of the vocab
     lm_head = lm_head[: config.vocab_size, :]
 
