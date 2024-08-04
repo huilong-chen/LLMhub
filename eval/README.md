@@ -9,26 +9,26 @@
 
 ## 提交评测命令
 ```shell
-bash scripts/eval_online.sh /mnt/data/chenhuilong/model/Qwen2-7B 0,1,2,3,4,5,6,7 mmlu,gsm8k,ceval,human_eval,bbh,mmlu_pro,mbpp /predict 6006
+bash scripts/eval_online.sh model/Qwen2-7B 0,1,2,3,4,5,6,7 mmlu,gsm8k,ceval,human_eval,bbh,mmlu_pro,mbpp /predict 6006
 ```
 
 ## 常见大模型评测数据集分类
 
 1. 代码
-- [HumanEval](https://github.com/openai/human-eval)：一个用于评估代码生成模型的基准数据集。它包含一组编程问题和相应的单元测试，模型需要根据问题描述生成正确的 Python 代码。
-- [MBPP](https://huggingface.co/datasets/google-research-datasets/mbpp)：Mostly Basic Python Problems，该基准测试包含大约1000个由大众提供的Python编程问题，旨在由入门级程序员解决，涵盖编s程基础、标准库功能等。每个问题由任务描述、代码解决方案和3个自动化测试用例组成。
+- ✅ [HumanEval](https://github.com/openai/human-eval)：一个用于评估代码生成模型的基准数据集。它包含一组编程问题和相应的单元测试，模型需要根据问题描述生成正确的 Python 代码。
+- ✅ [MBPP](https://huggingface.co/datasets/google-research-datasets/mbpp)：Mostly Basic Python Problems，该基准测试包含大约1000个由大众提供的Python编程问题，旨在由入门级程序员解决，涵盖编s程基础、标准库功能等。每个问题由任务描述、代码解决方案和3个自动化测试用例组成。
 2. 综合推理
-- [BBH](https://github.com/suzgunmirac/BIG-Bench-Hard)：Big-Bench Hard，由多个任务组成的大规模综合推理基准数据集。任务涵盖语言理解、数学推理、常识推理等多个领域。
+- ✅ [BBH](https://github.com/suzgunmirac/BIG-Bench-Hard)：Big-Bench Hard，由多个任务组成的大规模综合推理基准数据集。任务涵盖语言理解、数学推理、常识推理等多个领域。
 3. 世界知识
 - ✅ [MMLU](https://github.com/hendrycks/test)：Massive Multitask Language Understanding，MMLU 是一个多任务语言理解基准数据集，涵盖57个任务，涉及从初中到大学水平的广泛主题，如数学、历史、生物、法律等。
-- [MMLU-Pro](https://github.com/TIGER-AI-Lab/MMLU-Pro?tab=readme-ov-file)：MMLU-Pro 是 MMLU 的扩展版本，包含更多高级和专业领域的任务，如医学、法律等。
+- ✅ [MMLU-Pro](https://github.com/TIGER-AI-Lab/MMLU-Pro?tab=readme-ov-file)：MMLU-Pro 是 MMLU 的扩展版本，包含更多高级和专业领域的任务，如医学、法律等。
 4. 阅读理解
 - [OpenBookQA](https://allenai.org/data/open-book-qa)：针对开放书本问题回答的基准数据集，问题基于中学科学课程，模型需要结合背景知识进行回答。
 5. 数学
 - ✅ [GSM8k](https://huggingface.co/datasets/openai/gsm8k)：GSM8K是一个专注于小学数学问题的数据集，它包含了8500个高质量的语言多样化小学数学单词问题。GSM8K数据集中的问题通常需要2到8步的推理才能解决，这使得它能够有效评估模型的数学与逻辑能力。
-- ：[MATH](https://github.com/hendrycks/math/) 数据集包含数学竞赛题目，涵盖代数、几何、微积分等高级数学领域。
+- [MATH](https://github.com/hendrycks/math/) 数据集包含数学竞赛题目，涵盖代数、几何、微积分等高级数学领域。
 6. 中文
-- [CEval](https://cevalbenchmark.com/index_zh.html): 一个全面的中文基础模型评估套件。它包含了13948个多项选择题，涵盖了52个不同的学科和四个难度级别。
+- ✅ [CEval](https://cevalbenchmark.com/index_zh.html): 一个全面的中文基础模型评估套件。它包含了13948个多项选择题，涵盖了52个不同的学科和四个难度级别。
 - [CMMLU](https://github.com/haonan-li/CMMLU)：CMMLU 是 MMLU 的中文版本，涵盖类似的多任务和广泛主题，但重点在中文语言理解。
 
 
