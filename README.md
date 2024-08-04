@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/huilong-chen/LLMhub/main/docs/images/logo/logo_dark.png">
-    <img alt="LLMhub" src="https://raw.githubusercontent.com/huilong-chen/LLMhub/main/docs/images/logo/logo_light.png" width=55%>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/huilong-chen/LLMhub/main/docs/images/logo/logo_light.png">
+    <img alt="LLMhub" src="https://raw.githubusercontent.com/huilong-chen/LLMhub/main/docs/images/logo/logo_dark.png" width=55%>
   </picture>
 </p>
 
