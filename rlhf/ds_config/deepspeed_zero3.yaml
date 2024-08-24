@@ -1,0 +1,23 @@
+compute_environment: LOCAL_MACHINE
+debug: false
+deepspeed_config:
+  deepspeed_multinode_launcher: standard  # 多节点启动器方法，'standard' 是一种标准的启动方式
+  offload_optimizer_device: cpu  # 将优化器状态卸载到 CPU
+  offload_param_device: cpu  # 将模型参数卸载到 CPU
+  zero3_init_flag: true  # 启用 ZeRO (Zero Redundancy Optimizer) 第三阶段初始化
+  zero3_save_16bit_model: true  # 在 ZeRO 第三阶段中以 16 位精度保存模型
+  zero_stage: 3  # 使用 ZeRO 优化器的第三阶段
+distributed_type: DEEPSPEED  # 使用 DeepSpeed 进行分布式训练
+downcast_bf16: 'no'  # 是否下调 BF16 (bfloat16) 数据类型，'no' 表示不下调
+machine_rank: 0  # 机器的排名，'0' 通常指主机
+main_training_function: main  # 训练过程的主要函数，'main' 通常是脚本的入口点
+mixed_precision: bf16  # 使用混合精度训练，格式为 BF16 (bfloat16)
+num_machines: 1  # 训练所用的机器数量，'1' 表示单台机器
+num_processes: 1  # 每台机器上使用的进程数量，'1' 表示单个进程
+rdzv_backend: static  # 用于同步的后端，'static' 表示固定方式
+same_network: true  # 所有机器是否在同一网络上，'true' 表示在同一网络
+tpu_env: []  # TPU 环境的详细信息，空列表表示未提供 TPU 配置
+tpu_use_cluster: false  # 是否在集群中使用 TPU，'false' 表示不使用
+tpu_use_sudo: false  # 是否在 TPU 操作中使用 sudo，'false' 表示不使用
+use_cpu: false  # 是否使用 CPU 进行计算，'false' 表示不使用 CPU
+main_process_port: 29501  # 主进程使用的端口号，'29501' 是用于进程间通信的端口
